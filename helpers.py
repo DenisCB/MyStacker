@@ -89,20 +89,20 @@ def preprocess_input(train, ytrain, features, split_by, test, ytest):
     if test is None:
         test = train[:1].copy()
 
-    # If no features passed - then use all columns from data.
-    if isinstance(train, pd.DataFrame):
-        if not features:
-            features = train.columns
-        train = train[features]
-    if isinstance(test, pd.DataFrame):
-        test = test[features]
-
     # Turn `split_by` column name into a pandas series.
     # We'll apply KFold to it later.
     if split_by in features:
         split_by = train[split_by].copy()
     elif isinstance(split_by, int):
         split_by = train[:, split_by].copy()
+
+    # If no features passed - then use all columns from data.
+    if isinstance(train, pd.DataFrame):
+        if not features:
+            features = train.columns
+        train = train[features].values
+    if isinstance(test, pd.DataFrame):
+        test = test[features].values
 
     # If target is in pandas format - turn it to numpy array
     if isinstance(ytrain, (pd.DataFrame, pd.Series)):

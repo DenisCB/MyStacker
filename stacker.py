@@ -18,22 +18,23 @@ class Stacker:
         """
         metric - function, that accepts (true_values, predicted_values)
             and returns float.
-        train, ytrain - train data in pandas format
-        test - data to predict. If not given - you still
-            can get OOF prediction for train data.
+        train, ytrain (pd.DataFrame/numpy.array/scipy.csr_matrix) - train data
+        test (pd.DataFrame/numpy.array/scipy.csr_matrix) - data to predict.
+            If not given - you still can get OOF prediction for train data.
         ytest - if given, stacker will be evaluated on test data.
-        features - list of pandas column names to train on.
+        features - list of pandas column names to train on. If not given or
+            train is not a pd.DataFrame - all columns are used as features.
         features_to_encode (not implemented) - features for target encoding.
             Encoding uses target from train folds only.
-        split_by - column name, unique values from which should be found
+        split_by (str) - column name, unique values from which should be found
             in a single fold. Is used to avoid overfitting or leakage.
             For example you may want to put all events corresponding
-            to the same `user_id` to a single fold. If None - ignored.
+            to the same `user_id` to a single fold.
+            If None, or train is not pd.dataFrame - ignored.
         stratify_folds (bool) - used if split_by is None.
         n_splits - number of splits for train data. In order to get
             one OOF prediciton, model must be fitted n_splits times.
         split_seed - seed for folds
-
         """
         train, ytrain, features, split_by, test, ytest = preprocess_input(
             train, ytrain, features, split_by, test, ytest)
@@ -68,7 +69,7 @@ class Stacker:
         if self.level == 1:
             return self._train
         elif self.level == 2:
-            return self.train_meta
+            return self.train_meta.values
         else:
             raise NotImplementedError('Only levels 1 and 2 are implemented')
 
@@ -77,7 +78,7 @@ class Stacker:
         if self.level == 1:
             return self._test
         elif self.level == 2:
-            return self.test_meta
+            return self.test_meta.values
         else:
             raise NotImplementedError('Only levels 1 and 2 are implemented')
 
@@ -146,19 +147,16 @@ class Stacker:
                 split_by=split_by_fold,
                 n_splits=int(1/valid_size)
                 )[0]
-            valid_fold = train_fold.iloc[valid_ind]
-            train_fold = train_fold.iloc[train_ind]
+            valid_fold = train_fold[valid_ind]
+            train_fold = train_fold[train_ind]
             yvalid_fold = ytrain_fold[valid_ind]
             ytrain_fold = ytrain_fold[train_ind]
 
         # If no valid_size is given - give to it the whole test fold.
         # Minor overfitting is possible.
         elif model in ('xgb', 'lgb', 'nnet'):
-            valid_fold = self.train.iloc[test_ind]
+            valid_fold = self.train[test_ind]
             yvalid_fold = self.ytrain[test_ind]
-
-            train_fold = train_fold.reset_index(drop=True)
-            valid_fold = valid_fold.reset_index(drop=True)
         else:
             valid_fold, yvalid_fold = None, None
 
@@ -169,11 +167,11 @@ class Stacker:
             # Binary classification.
             try:
                 fold_pred = model.predict_proba(
-                    self.train.iloc[test_ind])[:, 1]
+                    self.train[test_ind])[:, 1]
                 test_pred = model.predict_proba(self.test)[:, 1]
             # Regression.
             except:
-                fold_pred = model.predict(self.train.iloc[test_ind])
+                fold_pred = model.predict(self.train[test_ind])
                 test_pred = model.predict(self.test)
             return fold_pred, test_pred
 
@@ -188,13 +186,13 @@ class Stacker:
                 model_params,
                 train_fold, ytrain_fold,
                 valid_fold, yvalid_fold,
-                self.train.iloc[test_ind], self.test)
+                self.train[test_ind], self.test)
         elif model == 'xgb':
             fold_pred, test_pred = xgb_predictor(
                 model_params,
                 train_fold, ytrain_fold,
                 valid_fold, yvalid_fold,
-                self.train.iloc[test_ind], self.test)
+                self.train[test_ind], self.test)
         elif model == 'nnet':
             raise NotImplementedError('No neural net for you.')
         return fold_pred, test_pred
@@ -208,7 +206,7 @@ class Stacker:
 
         for train_ind, test_ind in self.folds:
 
-            train_fold = self.train.iloc[train_ind]
+            train_fold = self.train[train_ind]
             ytrain_fold = self.ytrain[train_ind]
 
             # Adding validation sets (from train set) for models that require
