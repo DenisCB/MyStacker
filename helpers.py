@@ -13,7 +13,6 @@ def xgb_predictor(
     """
     input:
         params - dictionary of parameters to be passed to xgb.train
-        maximize_metric (bool) - whether to maximize metrics.
         train_fold, valid_fold, test_fold, test - numpy arrays or csr matrices.
             Model is trained on train data, best number of epochs is chosen
             by loss on valid. Test_fold and test - matrices, for which
@@ -58,7 +57,6 @@ def lgb_predictor(
     """
     input:
         params - dictionary of parameters to be passed to xgb.train
-        maximize_metric (bool) - whether to maximize metrics.
         train_fold, valid_fold, test_fold, test - numpy arrays or csr matrices.
             Model is trained on train data, best number of epochs is chosen
             by loss on valid. Test_fold and test - matrices, for which
